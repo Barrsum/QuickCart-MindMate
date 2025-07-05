@@ -1,6 +1,6 @@
 // src/pages/HomePage.jsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 
@@ -32,6 +32,7 @@ const HomePage = () => {
     const [hotDeals, setHotDeals] = useState([]);
     const [featured, setFeatured] = useState([]);
     const [loading, setLoading] = useState(true);
+    const mainContentRef = useRef(null);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -61,11 +62,11 @@ const HomePage = () => {
             <Header />
             
             <main>
-                <HeroSection />
+                <HeroSection scrollRef={mainContentRef} />
 
-                <div className="container mx-auto px-4 md:px-0">
+                <div ref={mainContentRef} className="container mx-auto px-4 md:px-0">
                     {loading ? (
-                        <div className="space-y-8">
+                        <div className="space-y-8 py-12">
                             <CarouselSkeleton title="Featured Products" />
                             <CarouselSkeleton title="Hot Deals" />
                         </div>

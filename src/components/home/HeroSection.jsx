@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const HeroSection = () => {
+const HeroSection = ({ scrollRef }) => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -17,22 +17,23 @@ const HeroSection = () => {
         }
     };
 
+    const handleScrollDown = () => {
+        scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
     return (
         <section className="relative h-screen flex items-center justify-center text-center text-white overflow-hidden">
-            {/* Background Video */}
             <video
                 autoPlay
                 loop
                 muted
                 playsInline
                 className="absolute top-0 left-0 w-full h-full object-cover -z-10"
-                poster="https://images.pexels.com/photos/4046317/pexels-photo-4046317.jpeg" // A fallback poster image
+                poster="https://images.pexels.com/photos/4046317/pexels-photo-4046317.jpeg"
             >
-                {/* Find a suitable royalty-free video from Pexels, Coverr, etc. */}
                 <source src="https://videos.pexels.com/video-files/4046317/4046317-hd_1920_1080_25fps.mp4" type="video/mp4" />
             </video>
             
-            {/* Dark Overlay */}
             <div className="absolute top-0 left-0 w-full h-full bg-black/60 -z-10"></div>
 
             <motion.div
@@ -60,6 +61,20 @@ const HeroSection = () => {
                         className="pl-12 pr-4 h-14 text-md rounded-full bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:ring-2 focus:ring-white"
                     />
                 </form>
+            </motion.div>
+
+            <motion.div
+                onClick={handleScrollDown}
+                className="absolute bottom-10 left-1/2 -translate-x-1/2 cursor-pointer p-2"
+                animate={{ y: [0, 10, 0] }}
+                transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    repeatType: 'loop',
+                    ease: 'easeInOut',
+                }}
+            >
+                <ChevronDown className="h-10 w-10 text-white/50" />
             </motion.div>
         </section>
     );
