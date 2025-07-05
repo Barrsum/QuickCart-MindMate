@@ -1,21 +1,12 @@
 // src/components/home/HeroSection.jsx
 
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input } from '@/components/ui/input';
-import { Search, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
+import SearchBar from './SearchBar';
 
 const HeroSection = ({ scrollRef }) => {
     const navigate = useNavigate();
-    const [searchQuery, setSearchQuery] = useState('');
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-        if (searchQuery.trim()) {
-            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-        }
-    };
 
     const handleScrollDown = () => {
         scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -51,16 +42,10 @@ const HeroSection = ({ scrollRef }) => {
                 <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto">
                     Your entire shopping list, delivered. Just type what you need and let us do the rest.
                 </p>
-                <form onSubmit={handleSearch} className="relative max-w-xl mx-auto">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/50" />
-                    <Input
-                        type="search"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="e.g., milk, bread, eggs, soap..."
-                        className="pl-12 pr-4 h-14 text-md rounded-full bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:ring-2 focus:ring-white"
-                    />
-                </form>
+                
+                <SearchBar 
+                    inputClassName="h-14 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:ring-2 focus:ring-white"
+                />
             </motion.div>
 
             <motion.div

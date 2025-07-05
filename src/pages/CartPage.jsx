@@ -67,7 +67,7 @@ const CartPage = () => {
         return (
             <div className="min-h-screen bg-background text-foreground">
                 <Header />
-                <div className="container mx-auto text-center py-24">
+                <div className="container mx-auto text-center py-24 pt-40">
                     <h1 className="text-3xl font-bold">Your Cart is Empty</h1>
                     <p className="text-muted-foreground mt-2">Looks like you haven't added anything to your cart yet.</p>
                     <Button asChild className="mt-6"><Link to="/">Start Shopping</Link></Button>
@@ -79,7 +79,8 @@ const CartPage = () => {
     return (
         <div className="min-h-screen bg-background text-foreground">
             <Header />
-            <main className="container mx-auto p-4 md:p-8">
+            {/* THE OVERLAP FIX: Added top padding to this main element. */}
+            <main className="container mx-auto p-4 md:p-8 pt-24 md:pt-28">
                 <h1 className="text-3xl font-bold mb-6">Your Cart</h1>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <div className="lg:col-span-2 bg-muted/20 p-1 rounded-lg">
@@ -114,7 +115,7 @@ const CartPage = () => {
                             </TableBody>
                         </Table>
                     </div>
-                    <div className="lg:col-span-1 p-6 bg-muted/30 rounded-lg sticky top-24">
+                    <div className="lg:col-span-1 p-6 bg-muted/30 rounded-lg sticky top-28">
                         <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
                         <div className="space-y-2">
                             <div className="flex justify-between"><span>Subtotal</span><span>₹{totalPrice.toFixed(2)}</span></div>
