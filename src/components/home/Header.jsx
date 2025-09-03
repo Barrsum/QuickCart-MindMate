@@ -40,7 +40,7 @@ const Header = () => {
                     className="text-2xl font-bold cursor-pointer text-white drop-shadow-md"
                     onClick={() => navigate('/')}
                 >
-                    QuickCart - MindMate
+                    QuickCart
                 </h1>
                 <div className="flex items-center gap-2">
                     <Button asChild variant="ghost" size="icon" className="text-white hover:bg-white/10 hover:text-white">
