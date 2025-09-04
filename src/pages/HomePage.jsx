@@ -83,7 +83,7 @@ const HomePage = () => {
             <footer className="py-12 mt-16 border-t bg-muted/30">
                 <div className="container mx-auto text-center text-muted-foreground">
                     <p className="font-bold text-lg mb-2">QuickCart</p>
-                    <p>© {new Date().getFullYear()} Walmart Hackathon Project. A new era of digital shopping.</p>
+                    <p>© {new Date().getFullYear()} Capstone Project. Team 55.</p>
                 </div>
             </footer>
         </div>
