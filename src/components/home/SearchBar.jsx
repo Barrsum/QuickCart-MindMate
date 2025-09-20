@@ -7,58 +7,66 @@ import { httpsCallable } from 'firebase/functions';
 import toast from 'react-hot-toast';
 
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, Mic } from 'lucide-react'; // <-- Import Mic icon
 import { cn } from '@/lib/utils';
 import AILoadingModal from '@/components/common/AILoadingModal';
+import VoiceSearchModal from '@/components/common/VoiceSearchModal'; // <-- Import the new voice modal
 
 const processSearchQuery = httpsCallable(functions, 'processSearchQuery');
 
 const SearchBar = ({ initialQuery = '', className, inputClassName }) => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState(initialQuery);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [isProcessingAI, setIsProcessingAI] = useState(false);
+    const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false); // <-- State for the voice modal
 
     useEffect(() => {
         setSearchQuery(initialQuery);
     }, [initialQuery]);
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        const originalUserQuery = searchQuery.trim(); // Capture original query
+    // This is our existing AI search function
+    const executeSearch = async (queryToSearch) => {
+        const originalUserQuery = queryToSearch.trim();
+        if (!originalUserQuery) return;
 
-        if (!originalUserQuery) {
-            navigate('/');
-            return;
-        }
-
-        setIsProcessing(true);
+        setIsProcessingAI(true);
         
         try {
             const response = await processSearchQuery({ text: originalUserQuery });
             const { result: processedQuery } = response.data;
-            
             toast.success('AI analysis complete!'); 
-            
-            // --- THIS IS THE KEY CHANGE ---
-            // We now pass both the processed query (q) and the original query (oq)
-            navigate(
-              `/search?q=${encodeURIComponent(processedQuery)}&oq=${encodeURIComponent(originalUserQuery)}`
-            );
-            // --- END OF CHANGE ---
-
+            navigate(`/search?q=${encodeURIComponent(processedQuery)}&oq=${encodeURIComponent(originalUserQuery)}`);
         } catch (error) {
             console.error("Error calling cloud function:", error);
             toast.error('AI assistant is busy, please try a manual search.');
         } finally {
-            setIsProcessing(false);
+            setIsProcessingAI(false);
+        }
+    };
+
+    const handleFormSubmit = (e) => {
+        e.preventDefault();
+        executeSearch(searchQuery);
+    };
+    
+    // This function is called by the VoiceSearchModal when it's done
+    const handleVoiceSearch = (transcript) => {
+        if (transcript) {
+            setSearchQuery(transcript); // Update the input field with the transcript
+            executeSearch(transcript);  // Immediately execute the search
         }
     };
 
     return (
         <>
-            <AILoadingModal isOpen={isProcessing} />
+            <AILoadingModal isOpen={isProcessingAI} />
+            <VoiceSearchModal 
+                isOpen={isVoiceModalOpen} 
+                onClose={() => setIsVoiceModalOpen(false)}
+                onSearch={handleVoiceSearch}
+            />
             
-            <form onSubmit={handleSearch} className={cn("relative w-full max-w-xl mx-auto", className)}>
+            <form onSubmit={handleFormSubmit} className={cn("relative w-full max-w-xl mx-auto", className)}>
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 
                 <Input
@@ -67,11 +75,20 @@ const SearchBar = ({ initialQuery = '', className, inputClassName }) => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Ask for 'milk, bread and some soap'..."
                     className={cn(
-                        "pl-12 pr-4 h-12 text-md rounded-full w-full",
+                        "pl-12 pr-12 h-12 text-md rounded-full w-full", // Increased padding-right for mic
                         inputClassName
                     )}
-                    disabled={isProcessing}
+                    disabled={isProcessingAI}
                 />
+                
+                <button 
+                    type="button" 
+                    onClick={() => setIsVoiceModalOpen(true)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted"
+                    aria-label="Start voice search"
+                >
+                    <Mic className="h-5 w-5 text-muted-foreground" />
+                </button>
             </form>
         </>
     );
