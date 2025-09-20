@@ -16,7 +16,10 @@ function useQuery() {
 
 const SearchPage = () => {
     const queryParams = useQuery();
+    // Get the AI-processed query for fetching data and for the heading
     const searchQuery = queryParams.get('q') || '';
+    // Get the original user query for the search bar, fallback to the processed one
+    const originalQuery = queryParams.get('oq') || searchQuery;
     
     const [foundResults, setFoundResults] = useState([]);
     const [notFoundCategories, setNotFoundCategories] = useState([]);
@@ -92,10 +95,12 @@ const SearchPage = () => {
             <main className="container mx-auto p-4 md:p-8 pt-24 md:pt-28">
                 <div className="border-b pb-6">
                     <p className="text-sm text-muted-foreground">Showing results for</p>
+                    {/* The heading uses the AI-processed query */}
                     <h1 className="text-4xl font-bold tracking-tight text-primary break-words">
                         “{searchQuery}”
                     </h1>
-                        <SearchBar initialQuery={searchQuery} />
+                    {/* The SearchBar component uses the original user query */}
+                    <SearchBar initialQuery={originalQuery} />
                 </div>
 
                 <SearchResults 
