@@ -1,96 +1,155 @@
 // src/components/common/VoiceSearchModal.jsx
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, X, Search, AlertTriangle } from 'lucide-react';
+import { Mic, X, Search, AlertTriangle, RefreshCw, Square } from 'lucide-react';
 import { useVoiceSearch } from '@/hooks/useVoiceSearch';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea'; // We will use a Textarea for editing
 
 const VoiceSearchModal = ({ isOpen, onClose, onSearch }) => {
-    const { isListening, transcript, error, startRecording, stopRecording } = useVoiceSearch();
+    const { 
+        isConnected, isListening, transcript, error, 
+        start, stop, disconnect, setTranscript
+    } = useVoiceSearch();
+    
+    const transcriptBoxRef = useRef(null);
 
+    // Effect to start the connection and listening when the modal opens.
     useEffect(() => {
-        // Automatically start recording when the modal opens, if it's not already listening.
-        if (isOpen && !isListening) {
-            startRecording();
+        if (isOpen) {
+            start();
         }
-        // Ensure we stop recording if the modal is closed unexpectedly.
-        return () => {
-            if (isListening) {
-                stopRecording();
-            }
-        }
-    }, [isOpen]);
+    }, [isOpen]); // We remove `start` from dep array to only run on open.
 
-    const handleSearchClick = () => {
-        stopRecording();
-        onSearch(transcript); // Send the final transcript to the SearchBar
+    // Effect to auto-scroll the textarea
+    useEffect(() => {
+        if (transcriptBoxRef.current) {
+            transcriptBoxRef.current.scrollTop = transcriptBoxRef.current.scrollHeight;
+        }
+    }, [transcript]);
+
+    const handleMicClick = () => {
+        if (isListening) {
+            stop(); // Just stop listening. The text remains.
+        } else if (isConnected) {
+            setTranscript(''); // Clear text before starting a new recording.
+            start();
+        }
+    };
+
+    const handleTryAgain = () => {
+        stop();
+        setTranscript('');
+        start();
+    };
+
+    const handleSearch = () => {
+        disconnect(); // Forcefully stop and disconnect everything.
+        onSearch(transcript);
+        onClose();
+    };
+    
+    const handleClose = () => {
+        disconnect();
         onClose();
     };
 
-    const handleCloseClick = () => {
-        stopRecording();
-        onClose();
+    // Handler for manual text editing.
+    const handleTextChange = (e) => {
+        if (!isListening) { // Only allow editing if not listening
+            setTranscript(e.target.value);
+        }
     };
+
+    const hasContent = transcript.trim().length > 0;
 
     return (
         <AnimatePresence>
             {isOpen && (
                 <motion.div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm p-4"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
                     <motion.div
-                        className="relative bg-muted/50 border rounded-lg shadow-xl w-full max-w-lg p-8 flex flex-col items-center gap-6"
+                        className="relative bg-muted/30 border rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden"
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0.9, opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     >
-                        <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={handleCloseClick}>
-                            <X className="h-5 w-5" />
-                        </Button>
-
-                        <div className="relative w-24 h-24 flex items-center justify-center">
-                            {isListening && (
-                                <motion.div
-                                    className="absolute inset-0 bg-primary/20 rounded-full"
-                                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                                />
-                            )}
-                            <div className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-colors ${isListening ? 'bg-primary' : 'bg-secondary'}`}>
-                                <Mic className={`h-10 w-10 transition-colors ${isListening ? 'text-primary-foreground' : 'text-secondary-foreground'}`} />
-                            </div>
+                        {/* --- Header and Close Button --- */}
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h2 className="text-lg font-semibold">Voice Search</h2>
+                            <Button variant="ghost" size="icon" className="rounded-full" onClick={handleClose}>
+                                <X className="h-5 w-5" />
+                            </Button>
                         </div>
+                        
+                        {/* --- Main Content Area --- */}
+                        <div className="flex flex-col p-6 gap-6 items-center flex-grow">
+                            {/* --- EDITABLE TEXTAREA --- */}
+                            <Textarea
+                                ref={transcriptBoxRef}
+                                className="w-full bg-background/50 rounded-lg p-4 min-h-[100px] max-h-[250px] overflow-y-auto border text-lg"
+                                value={transcript}
+                                onChange={handleTextChange}
+                                readOnly={isListening} // Textarea is read-only while listening
+                                placeholder={isListening ? "Listening..." : "Start speaking, or type here to edit..."}
+                            />
 
-                        <div className="w-full min-h-[100px] text-center">
-                            <h2 className="text-xl font-semibold text-foreground">
-                                {isListening ? "Listening..." : "Voice Search"}
-                            </h2>
-                            <p className="text-muted-foreground mt-4 text-lg min-h-[60px]">
-                                {transcript || (isListening ? "Start speaking now..." : "Click the search button when you're done.")}
+                            <div className="relative">
+                                <Button 
+                                    size="icon" 
+                                    className="w-20 h-20 rounded-full shadow-lg"
+                                    onClick={handleMicClick}
+                                    disabled={!isConnected}
+                                >
+                                    {isListening ? <Square className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
+                                </Button>
+                                {isListening && (
+                                    <motion.div
+                                        className="absolute inset-0 border-2 border-primary rounded-full -z-10"
+                                        animate={{ scale: [1, 1.4], opacity: [1, 0] }}
+                                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
+                                    />
+                                )}
+                            </div>
+                            <p className="text-sm text-muted-foreground -mt-2">
+                                {isListening ? "Press the square to stop" : (isConnected ? "Press the mic to speak" : "Connecting...")}
                             </p>
                         </div>
                         
-                        {error && (
-                            <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-                                <AlertTriangle className="h-5 w-5" />
-                                <p>{error}</p>
-                            </div>
-                        )}
+                        {/* --- Footer with Action Buttons --- */}
+                        <div className="flex items-center justify-between p-4 border-t bg-background/20">
+                            <Button 
+                                variant="outline" 
+                                onClick={handleTryAgain}
+                                disabled={!isConnected}
+                            >
+                                <RefreshCw className="mr-2 h-4 w-4"/>
+                                Try Again
+                            </Button>
+                            
+                            {error && (
+                                <div className="flex items-center gap-2 text-destructive text-sm mx-4">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <p>{error}</p>
+                                </div>
+                            )}
 
-                        <Button
-                            size="lg"
-                            className="w-full h-12 text-lg"
-                            onClick={handleSearchClick}
-                            disabled={!transcript || isListening}
-                        >
-                            <Search className="mr-2 h-5 w-5" />
-                            Search
-                        </Button>
+                            <Button 
+                                size="lg" 
+                                className="ml-auto"
+                                onClick={handleSearch}
+                                // --- THIS IS THE "ALWAYS ACTIVE" LOGIC ---
+                                disabled={!hasContent}
+                            >
+                                <Search className="mr-2 h-5 w-5" />
+                                Search
+                            </Button>
+                        </div>
                     </motion.div>
                 </motion.div>
             )}
