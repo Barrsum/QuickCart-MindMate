@@ -1,16 +1,13 @@
 // src/components/home/ProductCard.jsx
 
 import { Button } from "@/components/ui/button";
-import { Plus, Minus } from "lucide-react"; // Add Minus icon
+import { Plus, Minus } from "lucide-react";
 import { useCartStore } from '@/store/cartStore';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ProductCard = ({ product }) => {
-    // Get all the actions and state we need from the cart store
     const { addToCart, increaseQuantity, decreaseQuantity, cart } = useCartStore();
-
-    // Check if this specific product is in the cart
     const cartItem = cart.find(item => item.id === product.id);
     const quantityInCart = cartItem ? cartItem.quantity : 0;
 
@@ -20,43 +17,44 @@ const ProductCard = ({ product }) => {
     };
 
     return (
+        // --- FIX #1: Make the entire card a flex column and ensure full height ---
         <motion.div
-            className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-2 hover:border-primary"
-            layout // Add layout prop for smooth size changes
+            className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-2 hover:border-primary flex flex-col h-full"
+            layout
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
         >
-            {/* Image Container */}
-            <div className="aspect-square overflow-hidden">
+            {/* Image Container (No changes needed here from last time) */}
+            <div className="aspect-square overflow-hidden bg-white">
                 <img
                     src={product.imageUrl}
                     alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+                    className="w-full h-full object-contain mix-blend-multiply transition-transform duration-300 ease-in-out group-hover:scale-105"
                 />
             </div>
 
-            {/* Content Container */}
-            <div className="p-4">
-                <h3 className="font-semibold text-base truncate" title={product.name}>
-                    {product.name}
-                </h3>
-                <p className="text-sm text-muted-foreground capitalize mt-1">
-                    {product.category}
-                </p>
+            {/* --- FIX #2: Make the content area grow to fill available space --- */}
+            <div className="p-4 flex flex-col flex-grow">
+                <div> {/* This div wraps the text that can have variable height */}
+                    <h3 className="font-semibold text-base" title={product.name}>
+                        {product.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground capitalize mt-1">
+                        {product.category}
+                    </p>
+                </div>
 
-                {/* Price and Action Button Container */}
-                <div className="flex items-center justify-between mt-4">
+                {/* --- FIX #3: Push the price/button to the bottom --- */}
+                <div className="flex items-center justify-between mt-auto pt-4"> {/* mt-auto is the magic class */}
                     <p className="text-xl font-bold text-primary">
                         ₹{product.price.toFixed(2)}
                     </p>
                     
-                    {/* This is the key: Conditionally render the button or the quantity controls */}
                     <div className="w-[100px] h-[36px] flex items-center justify-end">
                         <AnimatePresence mode="wait">
                             {quantityInCart === 0 ? (
-                                // If not in cart, show the "Add" button
                                 <motion.div
                                     key="add"
                                     initial={{ opacity: 0, scale: 0.5 }}
@@ -73,7 +71,6 @@ const ProductCard = ({ product }) => {
                                     </Button>
                                 </motion.div>
                             ) : (
-                                // If in cart, show the quantity controls
                                 <motion.div
                                     key="quantity"
                                     initial={{ opacity: 0, scale: 0.5 }}
