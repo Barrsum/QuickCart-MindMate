@@ -1,21 +1,28 @@
 // src/components/home/ProductCarousel.jsx
 
 import useEmblaCarousel from 'embla-carousel-react';
-import ProductCard from './ProductCard'; // Ensure this path is correct
+// --- THIS IS THE FIX: Step 1 ---
+import WheelGestures from 'embla-carousel-wheel-gestures'; // Import the plugin
+import ProductCard from './ProductCard';
 import { motion } from 'framer-motion';
 
 const ProductCarousel = ({ title, products }) => {
-    const [emblaRef] = useEmblaCarousel({
-        align: 'start',
-        containScroll: 'trimSnaps',
-        dragFree: true,
-    });
+    // --- THIS IS THE FIX: Step 2 ---
+    // We add the plugin to the useEmblaCarousel hook
+    const [emblaRef] = useEmblaCarousel(
+        {
+            align: 'start',
+            containScroll: 'trimSnaps',
+            dragFree: true,
+        },
+        [WheelGestures()] // Activate the wheel gestures plugin here
+    );
+    // --- END OF FIX ---
 
     if (!products || products.length === 0) {
         return null;
     }
 
-    // Animation variants for the entire section
     const sectionVariants = {
         hidden: { opacity: 0, y: 50 },
         visible: {
@@ -38,7 +45,6 @@ const ProductCarousel = ({ title, products }) => {
                 <div className="flex">
                     {products.map(product => (
                         <div key={product.id} className="flex-shrink-0 flex-grow-0 basis-[70%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6 px-4">
-                            {/* We pass a prop to disable the card's individual animation */}
                             <ProductCard product={product} disableAnimation={true} />
                         </div>
                     ))}
