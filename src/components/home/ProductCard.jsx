@@ -6,7 +6,8 @@ import { useCartStore } from '@/store/cartStore';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ProductCard = ({ product }) => {
+// Accept a prop to disable the initial animation, default it to false
+const ProductCard = ({ product, disableAnimation = false }) => {
     const { addToCart, increaseQuantity, decreaseQuantity, cart } = useCartStore();
     const cartItem = cart.find(item => item.id === product.id);
     const quantityInCart = cartItem ? cartItem.quantity : 0;
@@ -17,16 +18,15 @@ const ProductCard = ({ product }) => {
     };
 
     return (
-        // --- FIX #1: Make the entire card a flex column and ensure full height ---
         <motion.div
             className="group relative overflow-hidden rounded-lg border bg-card text-card-foreground transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-2 hover:border-primary flex flex-col h-full"
             layout
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            // Conditionally apply the animation props
+            initial={disableAnimation ? {} : { opacity: 0, y: 30 }}
+            whileInView={disableAnimation ? {} : { opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
         >
-            {/* Image Container (No changes needed here from last time) */}
             <div className="aspect-square overflow-hidden bg-white">
                 <img
                     src={product.imageUrl}
@@ -35,9 +35,8 @@ const ProductCard = ({ product }) => {
                 />
             </div>
 
-            {/* --- FIX #2: Make the content area grow to fill available space --- */}
             <div className="p-4 flex flex-col flex-grow">
-                <div> {/* This div wraps the text that can have variable height */}
+                <div>
                     <h3 className="font-semibold text-base" title={product.name}>
                         {product.name}
                     </h3>
@@ -45,13 +44,10 @@ const ProductCard = ({ product }) => {
                         {product.category}
                     </p>
                 </div>
-
-                {/* --- FIX #3: Push the price/button to the bottom --- */}
-                <div className="flex items-center justify-between mt-auto pt-4"> {/* mt-auto is the magic class */}
+                <div className="flex items-center justify-between mt-auto pt-4">
                     <p className="text-xl font-bold text-primary">
                         ₹{product.price.toFixed(2)}
                     </p>
-                    
                     <div className="w-[100px] h-[36px] flex items-center justify-end">
                         <AnimatePresence mode="wait">
                             {quantityInCart === 0 ? (
