@@ -7,33 +7,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Import cn for conditional classes
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Trash2, PlusCircle, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const ProductManager = () => {
-    // --- NEW STATE MANAGEMENT ---
-    const [allProducts, setAllProducts] = useState([]); // Master list of all products
-    const [filteredProducts, setFilteredProducts] = useState([]); // Products to display after filtering
-    const [categories, setCategories] = useState([]); // List of available categories for filters
-    const [selectedCategories, setSelectedCategories] = useState([]); // Currently active filters
+    const [allProducts, setAllProducts] = useState([]);
+    const [filteredProducts, setFilteredProducts] = useState([]);
+    const [categories, setCategories] =useState([]);
+    const [selectedCategories, setSelectedCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [open, setOpen] = useState(false); // State for the popover
 
-    // --- UPDATED FETCH LOGIC ---
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch both products and categories at the same time
             const [productsSnapshot, categoriesSnapshot] = await Promise.all([
                 getDocs(collection(db, "products")),
                 getDocs(collection(db, "categories"))
             ]);
-
             const productsList = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             const categoriesList = categoriesSnapshot.docs.map(doc => doc.data().name);
-
             setAllProducts(productsList);
-            setFilteredProducts(productsList); // Initially, show all products
-            setCategories(categoriesList.sort()); // Sort categories alphabetically
+            setFilteredProducts(productsList);
+            setCategories(categoriesList.sort());
         } catch (error) {
             console.error("Failed to fetch data:", error);
         } finally {
@@ -45,12 +43,10 @@ const ProductManager = () => {
         fetchData();
     }, []);
 
-    // --- NEW FILTERING LOGIC ---
     useEffect(() => {
         if (selectedCategories.length === 0) {
-            setFilteredProducts(allProducts); // If no filter, show all
+            setFilteredProducts(allProducts);
         } else {
-            // Filter the master list based on selected categories
             const newFilteredProducts = allProducts.filter(product =>
                 selectedCategories.includes(product.category)
             );
@@ -58,13 +54,11 @@ const ProductManager = () => {
         }
     }, [selectedCategories, allProducts]);
 
-    const handleCategoryFilter = (categoryName) => {
+    const handleCategorySelect = (categoryName) => {
         setSelectedCategories(prev => {
             if (prev.includes(categoryName)) {
-                // If already selected, remove it (deselect)
                 return prev.filter(c => c !== categoryName);
             } else {
-                // Otherwise, add it to the selection
                 return [...prev, categoryName];
             }
         });
@@ -73,7 +67,7 @@ const ProductManager = () => {
     const handleToggle = async (productId, field, value) => {
         const productRef = doc(db, "products", productId);
         await updateDoc(productRef, { [field]: !value });
-        fetchData(); // Refetch all data to ensure consistency
+        fetchData();
     };
 
     const handleDelete = async (productId) => {
@@ -88,34 +82,60 @@ const ProductManager = () => {
     return (
         <Card>
             <CardContent className="p-6">
-                <h3 className="text-xl font-bold mb-4">Manage Existing Products</h3>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold">Manage Existing Products</h3>
 
-                {/* --- NEW FILTER BAR UI --- */}
-                <div className="flex items-center gap-2 flex-wrap mb-6 pb-6 border-b">
-                    <Button
-                        variant={selectedCategories.length === 0 ? 'default' : 'outline'}
-                        onClick={() => setSelectedCategories([])}
-                        className="rounded-full"
-                    >
-                        All
-                    </Button>
-                    {categories.map(category => (
-                        <Button
-                            key={category}
-                            variant={selectedCategories.includes(category) ? 'default' : 'outline'}
-                            onClick={() => handleCategoryFilter(category)}
-                            className="rounded-full capitalize"
-                        >
-                            {category}
-                        </Button>
-                    ))}
+                    {/* --- NEW SEARCHABLE FILTER POPOVER --- */}
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="ml-auto">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Filter Categories
+                                {selectedCategories.length > 0 && (
+                                    <span className="ml-2 inline-flex items-center justify-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                                        {selectedCategories.length}
+                                    </span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0" align="end">
+                            <Command>
+                                <CommandInput placeholder="Search category..." />
+                                <CommandList>
+                                    <CommandEmpty>No results found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {categories.map((category) => {
+                                            const isSelected = selectedCategories.includes(category);
+                                            return (
+                                                <CommandItem
+                                                    key={category}
+                                                    onSelect={() => handleCategorySelect(category)}
+                                                >
+                                                    <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary", isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible")}>
+                                                        <Check className={cn("h-4 w-4")} />
+                                                    </div>
+                                                    <span className="capitalize">{category}</span>
+                                                </CommandItem>
+                                            );
+                                        })}
+                                    </CommandGroup>
+                                    {selectedCategories.length > 0 && (
+                                        <CommandGroup>
+                                            <CommandItem onSelect={() => setSelectedCategories([])} className="text-destructive justify-center">
+                                                Clear filters
+                                            </CommandItem>
+                                        </CommandGroup>
+                                    )}
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
                 </div>
 
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Name</TableHead>
-                            {/* --- NEW CATEGORY COLUMN HEADER --- */}
                             <TableHead>Category</TableHead>
                             <TableHead>Hot Deal</TableHead>
                             <TableHead>Featured</TableHead>
@@ -123,11 +143,9 @@ const ProductManager = () => {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {/* Render the filtered products */}
                         {filteredProducts.map((product) => (
                             <TableRow key={product.id}>
                                 <TableCell className="font-medium">{product.name}</TableCell>
-                                {/* --- NEW CATEGORY COLUMN CELL --- */}
                                 <TableCell className="capitalize text-muted-foreground">{product.category}</TableCell>
                                 <TableCell>
                                     <Switch
