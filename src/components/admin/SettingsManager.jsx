@@ -9,31 +9,70 @@ import { Label } from '@/components/ui/label';
 import toast from 'react-hot-toast';
 
 const SettingsManager = () => {
+    // State for all settings
     const [signupsEnabled, setSignupsEnabled] = useState(true);
+    const [aiSearchEnabled, setAiSearchEnabled] = useState(true);
+    const [voiceSearchEnabled, setVoiceSearchEnabled] = useState(true);
     const [loading, setLoading] = useState(true);
 
+    // Fetch all settings from Firestore
     useEffect(() => {
         const fetchSettings = async () => {
-            const settingsRef = doc(db, 'settings', 'signup');
-            const docSnap = await getDoc(settingsRef);
-            if (docSnap.exists()) {
-                setSignupsEnabled(docSnap.data().isEnabled);
+            try {
+                const [signupDoc, searchDoc] = await Promise.all([
+                    getDoc(doc(db, 'settings', 'signup')),
+                    getDoc(doc(db, 'settings', 'search'))
+                ]);
+
+                if (signupDoc.exists()) {
+                    setSignupsEnabled(signupDoc.data().isEnabled);
+                }
+                if (searchDoc.exists()) {
+                    setAiSearchEnabled(searchDoc.data().isAIEnabled);
+                    setVoiceSearchEnabled(searchDoc.data().isVoiceEnabled);
+                }
+            } catch (error) {
+                console.error("Error fetching settings:", error);
+                toast.error("Could not load app settings.");
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchSettings();
     }, []);
 
-    const handleToggle = async (value) => {
-        setSignupsEnabled(value);
-        const settingsRef = doc(db, 'settings', 'signup');
+    // Generic handler to update a setting in Firestore
+    const handleSettingChange = async (docId, field, value) => {
         try {
-            await setDoc(settingsRef, { isEnabled: value });
-            toast.success(`Signups are now ${value ? 'ENABLED' : 'DISABLED'}.`);
+            const settingsRef = doc(db, 'settings', docId);
+            await setDoc(settingsRef, { [field]: value }, { merge: true });
+            toast.success(`Setting updated successfully.`);
         } catch (error) {
-            toast.error("Failed to update settings.");
-            console.error("Error updating settings:", error);
+            toast.error("Failed to update setting.");
+            console.error("Error updating setting:", error);
         }
+    };
+
+    // Specific handler for AI Search toggle to enforce dependency
+    const handleAiSearchToggle = (value) => {
+        setAiSearchEnabled(value);
+        handleSettingChange('search', 'isAIEnabled', value);
+        
+        // If AI Search is turned OFF, Voice Search must also be turned OFF
+        if (!value) {
+            setVoiceSearchEnabled(false);
+            handleSettingChange('search', 'isVoiceEnabled', false);
+        }
+    };
+
+    const handleVoiceSearchToggle = (value) => {
+        setVoiceSearchEnabled(value);
+        handleSettingChange('search', 'isVoiceEnabled', value);
+    };
+
+    const handleSignupToggle = (value) => {
+        setSignupsEnabled(value);
+        handleSettingChange('signup', 'isEnabled', value);
     };
 
     if (loading) return <p>Loading settings...</p>;
@@ -42,9 +81,10 @@ const SettingsManager = () => {
         <Card>
             <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
-                <CardDescription>Manage global settings for the store.</CardDescription>
+                <CardDescription>Manage global settings and features for the store.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+                {/* --- Signup Toggle --- */}
                 <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
                     <Label htmlFor="signup-toggle" className="flex flex-col space-y-1">
                         <span>Enable User Signups</span>
@@ -55,7 +95,38 @@ const SettingsManager = () => {
                     <Switch
                         id="signup-toggle"
                         checked={signupsEnabled}
-                        onCheckedChange={handleToggle}
+                        onCheckedChange={handleSignupToggle}
+                    />
+                </div>
+
+                {/* --- AI Search Toggle --- */}
+                <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                    <Label htmlFor="ai-search-toggle" className="flex flex-col space-y-1">
+                        <span>Enable AI-Powered Search</span>
+                        <span className="font-normal leading-snug text-muted-foreground">
+                            Uses AI to understand natural language search queries.
+                        </span>
+                    </Label>
+                    <Switch
+                        id="ai-search-toggle"
+                        checked={aiSearchEnabled}
+                        onCheckedChange={handleAiSearchToggle}
+                    />
+                </div>
+
+                {/* --- Voice Search Toggle (with dependency) --- */}
+                <div className="flex items-center justify-between space-x-2 p-4 border rounded-lg">
+                    <Label htmlFor="voice-search-toggle" className="flex flex-col space-y-1">
+                        <span>Enable Voice Search</span>
+                        <span className="font-normal leading-snug text-muted-foreground">
+                            Allows users to search with their voice. Requires AI Search.
+                        </span>
+                    </Label>
+                    <Switch
+                        id="voice-search-toggle"
+                        checked={voiceSearchEnabled}
+                        onCheckedChange={handleVoiceSearchToggle}
+                        disabled={!aiSearchEnabled} // <-- THIS ENFORCES THE DEPENDENCY
                     />
                 </div>
             </CardContent>

@@ -7,10 +7,11 @@ import { httpsCallable } from 'firebase/functions';
 import toast from 'react-hot-toast';
 
 import { Input } from '@/components/ui/input';
-import { Search, Mic } from 'lucide-react'; // <-- Import Mic icon
+import { Search, Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AILoadingModal from '@/components/common/AILoadingModal';
-import VoiceSearchModal from '@/components/common/VoiceSearchModal'; // <-- Import the new voice modal
+import VoiceSearchModal from '@/components/common/VoiceSearchModal';
+import { useSettings } from '@/context/SettingsContext'; // <-- IMPORT OUR NEW HOOK
 
 const processSearchQuery = httpsCallable(functions, 'processSearchQuery');
 
@@ -18,29 +19,36 @@ const SearchBar = ({ initialQuery = '', className, inputClassName }) => {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState(initialQuery);
     const [isProcessingAI, setIsProcessingAI] = useState(false);
-    const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false); // <-- State for the voice modal
+    const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+    
+    const { settings } = useSettings(); // <-- GET THE GLOBAL SETTINGS
 
     useEffect(() => {
         setSearchQuery(initialQuery);
     }, [initialQuery]);
 
-    // This is our existing AI search function
     const executeSearch = async (queryToSearch) => {
-        const originalUserQuery = queryToSearch.trim();
-        if (!originalUserQuery) return;
+        const userQuery = queryToSearch.trim();
+        if (!userQuery) return;
 
-        setIsProcessingAI(true);
-        
-        try {
-            const response = await processSearchQuery({ text: originalUserQuery });
-            const { result: processedQuery } = response.data;
-            toast.success('AI analysis complete!'); 
-            navigate(`/search?q=${encodeURIComponent(processedQuery)}&oq=${encodeURIComponent(originalUserQuery)}`);
-        } catch (error) {
-            console.error("Error calling cloud function:", error);
-            toast.error('AI assistant is busy, please try a manual search.');
-        } finally {
-            setIsProcessingAI(false);
+        // --- THIS IS THE KEY CONDITIONAL LOGIC ---
+        if (settings.isAIEnabled) {
+            // AI-Powered Search Flow
+            setIsProcessingAI(true);
+            try {
+                const response = await processSearchQuery({ text: userQuery });
+                const { result: processedQuery } = response.data;
+                toast.success('AI analysis complete!'); 
+                navigate(`/search?q=${encodeURIComponent(processedQuery)}&oq=${encodeURIComponent(userQuery)}`);
+            } catch (error) {
+                console.error("Error calling cloud function:", error);
+                toast.error('AI assistant is busy, please try another search.');
+            } finally {
+                setIsProcessingAI(false);
+            }
+        } else {
+            // Manual, Comma-Separated Search Flow
+            navigate(`/search?q=${encodeURIComponent(userQuery)}&oq=${encodeURIComponent(userQuery)}`);
         }
     };
 
@@ -49,11 +57,10 @@ const SearchBar = ({ initialQuery = '', className, inputClassName }) => {
         executeSearch(searchQuery);
     };
     
-    // This function is called by the VoiceSearchModal when it's done
     const handleVoiceSearch = (transcript) => {
         if (transcript) {
-            setSearchQuery(transcript); // Update the input field with the transcript
-            executeSearch(transcript);  // Immediately execute the search
+            setSearchQuery(transcript);
+            executeSearch(transcript);
         }
     };
 
@@ -73,22 +80,25 @@ const SearchBar = ({ initialQuery = '', className, inputClassName }) => {
                     type="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Ask for 'milk, bread and some soap'..."
+                    placeholder={settings.isAIEnabled ? "Ask for 'milk, bread and soap'..." : "Search categories, e.g., milk,soap"}
                     className={cn(
-                        "pl-12 pr-12 h-12 text-md rounded-full w-full", // Increased padding-right for mic
+                        "pl-12 pr-12 h-12 text-md rounded-full w-full",
                         inputClassName
                     )}
                     disabled={isProcessingAI}
                 />
                 
-                <button 
-                    type="button" 
-                    onClick={() => setIsVoiceModalOpen(true)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted"
-                    aria-label="Start voice search"
-                >
-                    <Mic className="h-5 w-5 text-muted-foreground" />
-                </button>
+                {/* --- CONDITIONAL RENDERING FOR MIC ICON --- */}
+                {settings.isVoiceEnabled && (
+                    <button 
+                        type="button" 
+                        onClick={() => setIsVoiceModalOpen(true)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted"
+                        aria-label="Start voice search"
+                    >
+                        <Mic className="h-5 w-5 text-muted-foreground" />
+                    </button>
+                )}
             </form>
         </>
     );

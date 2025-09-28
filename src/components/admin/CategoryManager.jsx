@@ -15,9 +15,7 @@ const CategoryManager = () => {
     const [categories, setCategories] = useState([]);
     const [newCategory, setNewCategory] = useState('');
     const [feedback, setFeedback] = useState('');
-
-    // --- State for Edit and Delete ---
-    const [editingCategoryId, setEditingCategoryId] = useState(null);
+    const [editingCategory, setEditingCategory] = useState(null);
     const [editingCategoryName, setEditingCategoryName] = useState('');
 
     useEffect(() => {
@@ -48,52 +46,58 @@ const CategoryManager = () => {
         }
     };
 
-    // --- Edit Logic ---
     const startEditing = (category) => {
-        setEditingCategoryId(category.id);
+        setEditingCategory(category);
         setEditingCategoryName(category.name);
     };
 
     const cancelEditing = () => {
-        setEditingCategoryId(null);
+        setEditingCategory(null);
         setEditingCategoryName('');
     };
 
     const handleUpdateCategory = async () => {
-        if (!editingCategoryName.trim()) return;
-        const categoryRef = doc(db, 'categories', editingCategoryId);
+        if (!editingCategory || !editingCategoryName.trim()) return;
+
+        const oldName = editingCategory.name;
+        const newName = editingCategoryName.trim().toLowerCase();
+
+        if (oldName === newName) {
+            cancelEditing();
+            return;
+        }
+
+        const toastId = toast.loading('Updating category and linking products...');
         try {
-            await updateDoc(categoryRef, { name: editingCategoryName.trim().toLowerCase() });
-            toast.success('Category updated!');
+            const productsQuery = query(collection(db, "products"), where("category", "==", oldName));
+            const productsSnapshot = await getDocs(productsQuery);
+            const batch = writeBatch(db);
+            const categoryRef = doc(db, 'categories', editingCategory.id);
+            batch.update(categoryRef, { name: newName });
+            productsSnapshot.forEach((productDoc) => {
+                const productRef = doc(db, "products", productDoc.id);
+                batch.update(productRef, { category: newName });
+            });
+            await batch.commit();
+            toast.success(`Category updated and ${productsSnapshot.size} products relinked.`, { id: toastId });
             cancelEditing();
         } catch (error) {
-            toast.error('Failed to update category.');
-            console.error("Error updating category: ", error);
+            toast.error('Failed to update category.', { id: toastId });
+            console.error("Error updating category and products: ", error);
         }
     };
 
-    // --- Delete Logic ---
     const handleConfirmDelete = async (categoryToDelete) => {
         const toastId = toast.loading(`Deleting '${categoryToDelete.name}' and all its products...`);
         try {
-            // Step 1: Find all products in this category
             const productsQuery = query(collection(db, "products"), where("category", "==", categoryToDelete.name));
             const productsSnapshot = await getDocs(productsQuery);
-
-            // Step 2: Use a Batched Write for atomic deletion
             const batch = writeBatch(db);
-
-            // Add all product deletions to the batch
             productsSnapshot.forEach((productDoc) => {
                 batch.delete(doc(db, "products", productDoc.id));
             });
-            
-            // Add the category deletion to the batch
             batch.delete(doc(db, "categories", categoryToDelete.id));
-
-            // Step 3: Commit the batch
             await batch.commit();
-
             toast.success(`'${categoryToDelete.name}' and ${productsSnapshot.size} products deleted.`, { id: toastId });
         } catch (error) {
             toast.error('Deletion failed. Please try again.', { id: toastId });
@@ -108,7 +112,6 @@ const CategoryManager = () => {
                 <CardDescription>Add, edit, or delete store categories.</CardDescription>
             </CardHeader>
             <CardContent>
-                {/* Add Category Form */}
                 <form onSubmit={handleAddCategory} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="newCategory">Add New Category</Label>
@@ -123,21 +126,18 @@ const CategoryManager = () => {
                     {feedback && <p className={`mt-2 text-sm ${feedback.startsWith('Error') ? 'text-red-500' : 'text-green-500'}`}>{feedback}</p>}
                 </form>
 
-                {/* Existing Categories List */}
                 <div className="mt-6">
                     <h3 className="font-semibold mb-2">Existing Categories:</h3>
                     <div className="space-y-2">
                         {categories.sort((a, b) => a.name.localeCompare(b.name)).map(cat => (
                             <div key={cat.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
-                                {editingCategoryId === cat.id ? (
-                                    // Edit mode UI
+                                {editingCategory?.id === cat.id ? (
                                     <div className="flex-grow flex items-center gap-2">
                                         <Input value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} className="h-8" />
                                         <Button size="icon" className="h-8 w-8" onClick={handleUpdateCategory}><Check className="h-4 w-4" /></Button>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEditing}><X className="h-4 w-4" /></Button>
                                     </div>
                                 ) : (
-                                    // Display mode UI
                                     <>
                                         <span className="capitalize">{cat.name}</span>
                                         <div className="flex items-center gap-2">
